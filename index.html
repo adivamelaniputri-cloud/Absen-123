@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Absensi Online</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .app-container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+        }
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        .btn-secondary {
+            background-color: #6b7280;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+        .btn-disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
+        }
+        .status-hadir { background-color: #dcfce7; color: #166534; }
+        .status-sakit { background-color: #fef9c3; color: #854d0e; }
+        .status-izin { background-color: #e0f2fe; color: #075985; }
+        .status-alfa { background-color: #fee2e2; color: #991b1b; }
+
+        /* Custom Modal for alerts */
+        #custom-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.3s ease;
+        }
+        #custom-modal .modal-content {
+            background-color: white;
+            padding: 2rem 2.5rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        #custom-modal.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+        #custom-modal.visible .modal-content {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <div id="app-container" class="app-container">
+
+        <!-- ===== Login Section ===== -->
+        <div id="login-view" class="card max-w-md mx-auto">
+            <div class="text-center mb-6">
+                <i class="fas fa-school text-4xl text-blue-500 mb-3"></i>
+                <h1 class="text-2xl font-bold text-gray-700">Sistem Absensi Online</h1>
+                <p class="text-gray-500 mt-1">Silakan masuk dengan ID Anda.</p>
+            </div>
+            <div>
+                <label for="user-id" class="block text-sm font-medium text-gray-600 mb-1">User ID</label>
+                <input type="text" id="user-id" placeholder="Contoh: siswa101 atau wali45" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div id="login-error" class="text-red-500 text-sm mt-2"></div>
+                <button id="login-btn" class="btn btn-primary w-full mt-4">Masuk</button>
+            </div>
+            <div class="mt-6 text-xs text-gray-400 text-center">
+                <p class="font-semibold">Untuk Demo:</p>
+                <p>Gunakan ID Siswa: <code class="bg-gray-200 p-1 rounded">siswa101</code>, <code class="bg-gray-200 p-1 rounded">siswa102</code>, dst.</p>
+                <p>Gunakan ID Wali Kelas: <code class="bg-gray-200 p-1 rounded">wali45</code></p>
+            </div>
+        </div>
+
+        <!-- ===== Student Dashboard ===== -->
+        <div id="student-view" class="hidden">
+            <div class="card mb-6 flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold">Dasbor Siswa</h2>
+                    <p id="student-greeting" class="text-gray-600"></p>
+                </div>
+                <button id="student-logout-btn" class="btn btn-secondary">Keluar</button>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Attendance Action -->
+                <div class="md:col-span-1 card">
+                    <h3 class="text-lg font-semibold mb-3">Absensi Hari Ini</h3>
+                    <p class="text-gray-500 text-sm mb-4" id="current-date"></p>
+                    <div id="attendance-options">
+                        <button onclick="markAttendance('Hadir')" class="btn btn-primary w-full mb-2">
+                            <i class="fas fa-check-circle mr-2"></i>Hadir
+                        </button>
+                        <button onclick="markAttendance('Sakit')" class="btn bg-yellow-400 hover:bg-yellow-500 text-white w-full mb-2">
+                            <i class="fas fa-briefcase-medical mr-2"></i>Sakit
+                        </button>
+                         <button onclick="markAttendance('Izin')" class="btn bg-sky-500 hover:bg-sky-600 text-white w-full">
+                            <i class="fas fa-file-alt mr-2"></i>Izin
+                        </button>
+                    </div>
+                    <div id="attendance-status" class="hidden text-center p-4 rounded-lg">
+                        <p class="font-semibold"></p>
+                    </div>
+                </div>
+
+                <!-- Attendance History -->
+                <div class="md:col-span-2 card">
+                    <h3 class="text-lg font-semibold mb-4">Riwayat Absensi Anda</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 text-gray-600">
+                                <tr>
+                                    <th class="p-3">Tanggal</th>
+                                    <th class="p-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body">
+                                <!-- Data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ===== Teacher Dashboard ===== -->
+        <div id="teacher-view" class="hidden">
+             <div class="card mb-6 flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold">Dasbor Wali Kelas</h2>
+                    <p id="teacher-greeting" class="text-gray-600"></p>
+                </div>
+                <button id="teacher-logout-btn" class="btn btn-secondary">Keluar</button>
+            </div>
+            
+            <div class="card">
+                <h3 class="text-lg font-semibold mb-1">Laporan Kehadiran Kelas</h3>
+                <p class="text-gray-500 text-sm mb-4" id="report-date"></p>
+                
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="p-4 bg-green-100 rounded-lg text-center">
+                        <p class="text-2xl font-bold text-green-700" id="summary-hadir">0</p>
+                        <p class="text-sm text-green-600">Hadir</p>
+                    </div>
+                    <div class="p-4 bg-yellow-100 rounded-lg text-center">
+                        <p class="text-2xl font-bold text-yellow-700" id="summary-sakit">0</p>
+                        <p class="text-sm text-yellow-600">Sakit</p>
+                    </div>
+                    <div class="p-4 bg-sky-100 rounded-lg text-center">
+                        <p class="text-2xl font-bold text-sky-700" id="summary-izin">0</p>
+                        <p class="text-sm text-sky-600">Izin</p>
+                    </div>
+                     <div class="p-4 bg-red-100 rounded-lg text-center">
+                        <p class="text-2xl font-bold text-red-700" id="summary-alfa">0</p>
+                        <p class="text-sm text-red-600">Alfa</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-50 text-gray-600">
+                            <tr>
+                                <th class="p-3">Nama Siswa</th>
+                                <th class="p-3">Status Kehadiran</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-table-body">
+                            <!-- Data will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Custom Modal -->
+    <div id="custom-modal" class="hidden opacity-0 pointer-events-none">
+        <div class="modal-content">
+            <p id="modal-message" class="text-lg"></p>
+        </div>
+    </div>
+
+    <script>
+        // --- Local Database ---
+        const localUsers = {
+            'siswa101': { id: 'siswa101', name: 'Budi Santoso', role: 'student', class: 'X IPA 1' },
+            'siswa102': { id: 'siswa102', name: 'Ani Yudhoyono', role: 'student', class: 'X IPA 1' },
+            'siswa103': { id: 'siswa103', name: 'Citra Lestari', role: 'student', class: 'X IPA 1' },
+            'siswa104': { id: 'siswa104', name: 'Dewi Persik', role: 'student', class: 'X IPA 1' },
+            'wali45': { id: 'wali45', name: 'Dr. Indah Permata', role: 'teacher', class: 'X IPA 1' },
+        };
+        let attendanceData = [];
+
+        // --- Global State ---
+        let currentUser = null;
+
+        // --- UI Elements ---
+        const loginView = document.getElementById('login-view');
+        const studentView = document.getElementById('student-view');
+        const teacherView = document.getElementById('teacher-view');
+        const loginBtn = document.getElementById('login-btn');
+        const userIdInput = document.getElementById('user-id');
+        const loginError = document.getElementById('login-error');
+        
+        // --- Modal Elements ---
+        const customModal = document.getElementById('custom-modal');
+        const modalMessage = document.getElementById('modal-message');
+
+        // --- Utility Functions ---
+        const getTodayDateString = () => {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        
+        const showModal = (message) => {
+            modalMessage.textContent = message;
+            customModal.classList.remove('hidden');
+            setTimeout(() => customModal.classList.add('visible'), 10); // Fade in
+            
+            setTimeout(() => {
+                hideModal();
+            }, 2500); // Auto-hide after 2.5 seconds
+        };
+
+        const hideModal = () => {
+            customModal.classList.remove('visible');
+            setTimeout(() => customModal.classList.add('hidden'), 300); // Wait for fade out
+        };
+
+        // --- Date Formatting ---
+        const todayString = getTodayDateString();
+        const formattedDate = new Date().toLocaleDateString('id-ID', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        document.getElementById('current-date').textContent = formattedDate;
+        document.getElementById('report-date').textContent = formattedDate;
+
+        // --- Authentication ---
+        const handleLogin = () => {
+            const userId = userIdInput.value.trim().toLowerCase();
+            if (!userId) {
+                loginError.textContent = 'User ID tidak boleh kosong.';
+                return;
+            }
+            loginError.textContent = '';
+            
+            const user = localUsers[userId];
+            if (user) {
+                currentUser = user;
+                if (currentUser.role === 'student') {
+                    showStudentDashboard();
+                } else if (currentUser.role === 'teacher') {
+                    showTeacherDashboard();
+                }
+            } else {
+                loginError.textContent = 'User ID tidak ditemukan.';
+                currentUser = null;
+            }
+        };
+
+        const handleLogout = () => {
+             currentUser = null;
+             loginView.classList.remove('hidden');
+             studentView.classList.add('hidden');
+             teacherView.classList.add('hidden');
+             userIdInput.value = '';
+        };
+
+        // --- Student View Functions ---
+        const showStudentDashboard = () => {
+            loginView.classList.add('hidden');
+            studentView.classList.remove('hidden');
+            document.getElementById('student-greeting').textContent = `Selamat datang, ${currentUser.name}!`;
+            checkTodayAttendance();
+            displayAttendanceHistory();
+        };
+        
+        window.markAttendance = (status) => {
+            if (!currentUser) return;
+
+            const newAttendance = {
+                studentId: currentUser.id,
+                studentName: currentUser.name,
+                class: currentUser.class,
+                date: todayString,
+                status: status,
+                timestamp: new Date()
+            };
+
+            attendanceData.push(newAttendance);
+            showModal(`Kehadiran sebagai '${status}' berhasil dicatat!`);
+            checkTodayAttendance(); // Refresh the buttons/status display
+            displayAttendanceHistory(); // Refresh the history table
+        };
+        
+        const checkTodayAttendance = () => {
+            const todayAttendance = attendanceData.find(att => att.studentId === currentUser.id && att.date === todayString);
+
+            const optionsDiv = document.getElementById('attendance-options');
+            const statusDiv = document.getElementById('attendance-status');
+            const statusText = statusDiv.querySelector('p');
+
+            if (todayAttendance) {
+                optionsDiv.classList.add('hidden');
+                statusDiv.classList.remove('hidden');
+                statusText.textContent = `Anda sudah absen hari ini: ${todayAttendance.status}`;
+                statusDiv.className = `text-center p-4 rounded-lg status-${todayAttendance.status.toLowerCase()}`;
+            } else {
+                optionsDiv.classList.remove('hidden');
+                statusDiv.classList.add('hidden');
+            }
+        };
+
+        const displayAttendanceHistory = () => {
+            const historyTableBody = document.getElementById('history-table-body');
+            const userHistory = attendanceData
+                .filter(att => att.studentId === currentUser.id)
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (userHistory.length === 0) {
+                historyTableBody.innerHTML = `<tr><td colspan="2" class="text-center p-4 text-gray-500">Belum ada riwayat absensi.</td></tr>`;
+                return;
+            }
+
+            historyTableBody.innerHTML = userHistory.map(att => `
+                <tr class="border-b">
+                    <td class="p-3">${new Date(att.date).toLocaleDateString('id-ID', {year: 'numeric', month: 'long', day: 'numeric'})}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full status-${att.status.toLowerCase()}">
+                            ${att.status}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        };
+
+        // --- Teacher View Functions ---
+        const showTeacherDashboard = () => {
+            loginView.classList.add('hidden');
+            teacherView.classList.remove('hidden');
+            document.getElementById('teacher-greeting').textContent = `Wali Kelas: ${currentUser.name} (${currentUser.class})`;
+            displayClassReport();
+        };
+
+        const displayClassReport = () => {
+            const reportTableBody = document.getElementById('report-table-body');
+            
+            const studentList = Object.values(localUsers).filter(user => user.role === 'student' && user.class === currentUser.class);
+            const todayAttendance = attendanceData.filter(att => att.class === currentUser.class && att.date === todayString);
+
+            let summary = { Hadir: 0, Sakit: 0, Izin: 0, Alfa: 0 };
+            
+            const reportHtml = studentList.map(student => {
+                const attended = todayAttendance.find(att => att.studentId === student.id);
+                const status = attended ? attended.status : 'Alfa';
+                summary[status]++;
+                
+                return `
+                    <tr class="border-b">
+                        <td class="p-3">${student.name}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full status-${status.toLowerCase()}">
+                                ${status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            reportTableBody.innerHTML = reportHtml || `<tr><td colspan="2" class="text-center p-4">Tidak ada siswa di kelas ini.</td></tr>`;
+
+            // Update summary
+            document.getElementById('summary-hadir').textContent = summary.Hadir;
+            document.getElementById('summary-sakit').textContent = summary.Sakit;
+            document.getElementById('summary-izin').textContent = summary.Izin;
+            document.getElementById('summary-alfa').textContent = summary.Alfa;
+        };
+        
+        // --- Event Listeners ---
+        loginBtn.addEventListener('click', handleLogin);
+        userIdInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+        
+        document.getElementById('student-logout-btn').addEventListener('click', handleLogout);
+        document.getElementById('teacher-logout-btn').addEventListener('click', handleLogout);
+
+    </script>
+
+</body>
+</html>
+
