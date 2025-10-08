@@ -37,58 +37,38 @@
             transition: all 0.2s ease;
             text-align: center;
         }
-        .btn-primary {
-            background-color: #3b82f6;
-            color: white;
-        }
-        .btn-primary:hover {
-            background-color: #2563eb;
-        }
-        .btn-secondary {
-            background-color: #6b7280;
-            color: white;
-        }
-        .btn-secondary:hover {
-            background-color: #4b5563;
-        }
-        .btn-disabled {
-            background-color: #d1d5db;
-            cursor: not-allowed;
-        }
+        .btn-primary { background-color: #3b82f6; color: white; }
+        .btn-primary:hover { background-color: #2563eb; }
+        .btn-secondary { background-color: #6b7280; color: white; }
+        .btn-secondary:hover { background-color: #4b5563; }
         .status-hadir { background-color: #dcfce7; color: #166534; }
         .status-sakit { background-color: #fef9c3; color: #854d0e; }
         .status-izin { background-color: #e0f2fe; color: #075985; }
-        .status-alfa { background-color: #fee2e2; color: #991b1b; }
-
-        /* Custom Modal for alerts */
+        .photo-thumbnail {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        /* Custom Modal for alerts and photo view */
         #custom-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            transition: opacity 0.3s ease;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; transition: opacity 0.3s ease;
         }
         #custom-modal .modal-content {
-            background-color: white;
-            padding: 2rem 2.5rem;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            transform: scale(0.95);
-            transition: transform 0.3s ease;
+            background-color: white; padding: 2rem; border-radius: 12px;
+            text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transform: scale(0.95); transition: transform 0.3s ease;
+            max-width: 90vw; max-height: 90vh;
         }
-        #custom-modal.visible {
-            opacity: 1;
-            pointer-events: all;
-        }
-        #custom-modal.visible .modal-content {
-            transform: scale(1);
+         #custom-modal.visible .modal-content { transform: scale(1); }
+        #photo-viewer-img { max-width: 100%; max-height: 70vh; border-radius: 8px;}
+        .tab-btn.active {
+            color: #3b82f6;
+            border-bottom: 2px solid #3b82f6;
         }
     </style>
 </head>
@@ -96,123 +76,118 @@
 
     <div id="app-container" class="app-container">
 
-        <!-- ===== Login Section ===== -->
-        <div id="login-view" class="card max-w-md mx-auto">
-            <div class="text-center mb-6">
-                <i class="fas fa-school text-4xl text-blue-500 mb-3"></i>
-                <h1 class="text-2xl font-bold text-gray-700">Sistem Absensi Online</h1>
-                <p class="text-gray-500 mt-1">Silakan masuk dengan ID Anda.</p>
+        <!-- ===== Unified Login Section ===== -->
+        <div id="login-view" class="card max-w-lg mx-auto">
+            <!-- Tabs -->
+            <div class="flex border-b mb-6">
+                <button id="show-student-login-tab" class="tab-btn flex-1 py-2 font-semibold text-center focus:outline-none active">
+                    <i class="fas fa-user-graduate mr-2"></i>Absensi Siswa
+                </button>
+                <button id="show-teacher-login-tab" class="tab-btn flex-1 py-2 font-semibold text-gray-500 text-center focus:outline-none">
+                    <i class="fas fa-chalkboard-teacher mr-2"></i>Login Guru
+                </button>
             </div>
-            <div>
-                <label for="user-id" class="block text-sm font-medium text-gray-600 mb-1">User ID</label>
-                <input type="text" id="user-id" placeholder="Contoh: siswa101 atau wali45" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <div id="login-error" class="text-red-500 text-sm mt-2"></div>
-                <button id="login-btn" class="btn btn-primary w-full mt-4">Masuk</button>
+            
+            <!-- Student Login Form -->
+            <div id="student-login-form">
+                <div class="mb-4">
+                    <label for="student-name" class="block text-sm font-medium text-gray-600 mb-1">Nama Lengkap</label>
+                    <input type="text" id="student-name" placeholder="Masukkan nama lengkap Anda" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label for="student-class" class="block text-sm font-medium text-gray-600 mb-1">Pilih Kelas</label>
+                    <select id="student-class" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <!-- Options populated by JS -->
+                    </select>
+                </div>
+                <div id="student-login-error" class="text-red-500 text-sm mb-2 text-center h-4"></div>
+                <button id="student-login-btn" class="btn btn-primary w-full mt-2">Lanjutkan</button>
             </div>
-            <div class="mt-6 text-xs text-gray-400 text-center">
-                <p class="font-semibold">Untuk Demo:</p>
-                <p>Gunakan ID Siswa: <code class="bg-gray-200 p-1 rounded">siswa101</code>, <code class="bg-gray-200 p-1 rounded">siswa102</code>, dst.</p>
-                <p>Gunakan ID Wali Kelas: <code class="bg-gray-200 p-1 rounded">wali45</code></p>
+            
+            <!-- Teacher Login Form -->
+            <div id="teacher-login-form" class="hidden">
+                 <div class="mb-4">
+                    <label for="teacher-id" class="block text-sm font-medium text-gray-600 mb-1">ID Wali Kelas</label>
+                    <input type="text" id="teacher-id" placeholder="Masukkan ID Anda" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                 </div>
+                 <div class="mb-4">
+                    <label for="teacher-password" class="block text-sm font-medium text-gray-600 mb-1">Password</label>
+                    <input type="password" id="teacher-password" placeholder="Masukkan password Anda" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                 </div>
+                 <div id="teacher-login-error" class="text-red-500 text-sm mb-2 text-center h-4"></div>
+                 <button id="teacher-login-btn" class="btn btn-secondary w-full mt-2">Masuk</button>
             </div>
         </div>
 
         <!-- ===== Student Dashboard ===== -->
         <div id="student-view" class="hidden">
-            <div class="card mb-6 flex justify-between items-center">
+            <div class="card mb-6 flex justify-between items-center flex-wrap gap-4">
                 <div>
                     <h2 class="text-2xl font-bold">Dasbor Siswa</h2>
                     <p id="student-greeting" class="text-gray-600"></p>
                 </div>
                 <button id="student-logout-btn" class="btn btn-secondary">Keluar</button>
             </div>
-
-            <div class="grid md:grid-cols-3 gap-6">
+            <div class="grid md:grid-cols-2 gap-6">
                 <!-- Attendance Action -->
-                <div class="md:col-span-1 card">
+                <div class="card">
                     <h3 class="text-lg font-semibold mb-3">Absensi Hari Ini</h3>
                     <p class="text-gray-500 text-sm mb-4" id="current-date"></p>
+                    <div id="photo-section" class="mb-4">
+                        <label for="photo-upload" class="block text-sm font-medium text-gray-600 mb-2">Upload Bukti Foto (Wajib untuk status Hadir)</label>
+                        <input type="file" id="photo-upload" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        <img id="photo-preview" class="hidden mt-4 rounded-lg w-full max-w-xs mx-auto shadow-md" alt="Preview Foto">
+                    </div>
                     <div id="attendance-options">
-                        <button onclick="markAttendance('Hadir')" class="btn btn-primary w-full mb-2">
-                            <i class="fas fa-check-circle mr-2"></i>Hadir
-                        </button>
-                        <button onclick="markAttendance('Sakit')" class="btn bg-yellow-400 hover:bg-yellow-500 text-white w-full mb-2">
-                            <i class="fas fa-briefcase-medical mr-2"></i>Sakit
-                        </button>
-                         <button onclick="markAttendance('Izin')" class="btn bg-sky-500 hover:bg-sky-600 text-white w-full">
-                            <i class="fas fa-file-alt mr-2"></i>Izin
-                        </button>
+                        <button onclick="markAttendance('Hadir')" class="btn btn-primary w-full mb-2"><i class="fas fa-check-circle mr-2"></i>Hadir</button>
+                        <button onclick="markAttendance('Sakit')" class="btn bg-yellow-400 hover:bg-yellow-500 text-white w-full mb-2"><i class="fas fa-briefcase-medical mr-2"></i>Sakit</button>
+                        <button onclick="markAttendance('Izin')" class="btn bg-sky-500 hover:bg-sky-600 text-white w-full"><i class="fas fa-file-alt mr-2"></i>Izin</button>
                     </div>
                     <div id="attendance-status" class="hidden text-center p-4 rounded-lg">
                         <p class="font-semibold"></p>
                     </div>
                 </div>
-
                 <!-- Attendance History -->
-                <div class="md:col-span-2 card">
+                <div class="card">
                     <h3 class="text-lg font-semibold mb-4">Riwayat Absensi Anda</h3>
-                    <div class="overflow-x-auto">
+                    <div class="overflow-y-auto max-h-96">
                         <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-50 text-gray-600">
+                            <thead class="bg-gray-50 text-gray-600 sticky top-0">
                                 <tr>
                                     <th class="p-3">Tanggal</th>
                                     <th class="p-3">Status</th>
                                 </tr>
                             </thead>
-                            <tbody id="history-table-body">
-                                <!-- Data will be populated by JavaScript -->
-                            </tbody>
+                            <tbody id="history-table-body"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
 
-
         <!-- ===== Teacher Dashboard ===== -->
         <div id="teacher-view" class="hidden">
-             <div class="card mb-6 flex justify-between items-center">
+             <div class="card mb-6 flex justify-between items-center flex-wrap gap-4">
                 <div>
                     <h2 class="text-2xl font-bold">Dasbor Wali Kelas</h2>
                     <p id="teacher-greeting" class="text-gray-600"></p>
                 </div>
                 <button id="teacher-logout-btn" class="btn btn-secondary">Keluar</button>
             </div>
-            
             <div class="card">
-                <h3 class="text-lg font-semibold mb-1">Laporan Kehadiran Kelas</h3>
+                <h3 class="text-lg font-semibold mb-1">Laporan Kehadiran Hari Ini</h3>
                 <p class="text-gray-500 text-sm mb-4" id="report-date"></p>
-                
-                <!-- Summary Cards -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div class="p-4 bg-green-100 rounded-lg text-center">
-                        <p class="text-2xl font-bold text-green-700" id="summary-hadir">0</p>
-                        <p class="text-sm text-green-600">Hadir</p>
-                    </div>
-                    <div class="p-4 bg-yellow-100 rounded-lg text-center">
-                        <p class="text-2xl font-bold text-yellow-700" id="summary-sakit">0</p>
-                        <p class="text-sm text-yellow-600">Sakit</p>
-                    </div>
-                    <div class="p-4 bg-sky-100 rounded-lg text-center">
-                        <p class="text-2xl font-bold text-sky-700" id="summary-izin">0</p>
-                        <p class="text-sm text-sky-600">Izin</p>
-                    </div>
-                     <div class="p-4 bg-red-100 rounded-lg text-center">
-                        <p class="text-2xl font-bold text-red-700" id="summary-alfa">0</p>
-                        <p class="text-sm text-red-600">Alfa</p>
-                    </div>
-                </div>
-
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left">
                         <thead class="bg-gray-50 text-gray-600">
                             <tr>
                                 <th class="p-3">Nama Siswa</th>
-                                <th class="p-3">Status Kehadiran</th>
+                                <th class="p-3">Kelas</th>
+                                <th class="p-3">Keterangan</th>
+                                <th class="p-3">Bukti Foto</th>
                             </tr>
                         </thead>
-                        <tbody id="report-table-body">
-                            <!-- Data will be populated by JavaScript -->
-                        </tbody>
+                        <tbody id="report-table-body"></tbody>
                     </table>
                 </div>
             </div>
@@ -221,169 +196,255 @@
     
     <!-- Custom Modal -->
     <div id="custom-modal" class="hidden opacity-0 pointer-events-none">
-        <div class="modal-content">
+        <div class="modal-content" id="modal-content-main">
             <p id="modal-message" class="text-lg"></p>
+            <div id="photo-viewer" class="hidden">
+                 <img id="photo-viewer-img" src="" alt="Bukti Foto">
+                 <button id="close-photo-viewer" class="btn btn-secondary mt-4">Tutup</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- Local Database ---
-        const localUsers = {
-            'siswa101': { id: 'siswa101', name: 'Budi Santoso', role: 'student', class: 'X IPA 1' },
-            'siswa102': { id: 'siswa102', name: 'Ani Yudhoyono', role: 'student', class: 'X IPA 1' },
-            'siswa103': { id: 'siswa103', name: 'Citra Lestari', role: 'student', class: 'X IPA 1' },
-            'siswa104': { id: 'siswa104', name: 'Dewi Persik', role: 'student', class: 'X IPA 1' },
-            'wali45': { id: 'wali45', name: 'Dr. Indah Permata', role: 'teacher', class: 'X IPA 1' },
+        // --- Local "Database" & Config ---
+        // Anda bisa mengubah password guru di sini
+        const teacherUsers = {
+            'wali45': { id: 'wali45', name: 'Dr. Indah Permata', role: 'teacher', class: 'XII-A', password: 'admin123' },
+            'wali46': { id: 'wali46', name: 'Bpk. Budiarto', role: 'teacher', class: 'XII-B', password: 'guru456' },
         };
-        let attendanceData = [];
+        const classList = [
+            'XII-A', 'XII-B', 'XII-C', 'XII-D', 'XII-E', 'XII-F', 
+            'XII-G', 'XII-H', 'XII-I', 'XII-J', 'XII-K', 'XII-L'
+        ];
+        let attendanceData = JSON.parse(localStorage.getItem('attendanceData')) || [];
 
         // --- Global State ---
         let currentUser = null;
+        let uploadedPhotoData = null;
 
         // --- UI Elements ---
         const loginView = document.getElementById('login-view');
         const studentView = document.getElementById('student-view');
         const teacherView = document.getElementById('teacher-view');
-        const loginBtn = document.getElementById('login-btn');
-        const userIdInput = document.getElementById('user-id');
-        const loginError = document.getElementById('login-error');
-        
-        // --- Modal Elements ---
+        const studentLoginForm = document.getElementById('student-login-form');
+        const teacherLoginForm = document.getElementById('teacher-login-form');
+        const studentTabBtn = document.getElementById('show-student-login-tab');
+        const teacherTabBtn = document.getElementById('show-teacher-login-tab');
+        const photoUpload = document.getElementById('photo-upload');
+        const photoPreview = document.getElementById('photo-preview');
+
+        // --- Modal ---
         const customModal = document.getElementById('custom-modal');
         const modalMessage = document.getElementById('modal-message');
+        const photoViewer = document.getElementById('photo-viewer');
+        const photoViewerImg = document.getElementById('photo-viewer-img');
 
         // --- Utility Functions ---
-        const getTodayDateString = () => {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        };
+        const getTodayDateString = () => new Date().toISOString().split('T')[0];
         
+        const saveAttendanceData = () => {
+            localStorage.setItem('attendanceData', JSON.stringify(attendanceData));
+        };
+
         const showModal = (message) => {
+            photoViewer.classList.add('hidden');
+            modalMessage.classList.remove('hidden');
             modalMessage.textContent = message;
             customModal.classList.remove('hidden');
-            setTimeout(() => customModal.classList.add('visible'), 10); // Fade in
-            
-            setTimeout(() => {
-                hideModal();
-            }, 2500); // Auto-hide after 2.5 seconds
+            setTimeout(() => customModal.classList.add('visible'), 10);
+            setTimeout(hideModal, 2500);
         };
-
+        
         const hideModal = () => {
             customModal.classList.remove('visible');
-            setTimeout(() => customModal.classList.add('hidden'), 300); // Wait for fade out
+            setTimeout(() => customModal.classList.add('hidden'), 300);
+        };
+        
+        window.showPhotoModal = (photoData) => {
+            modalMessage.classList.add('hidden');
+            photoViewer.classList.remove('hidden');
+            photoViewerImg.src = photoData;
+            customModal.classList.remove('hidden');
+            setTimeout(() => customModal.classList.add('visible'), 10);
         };
 
-        // --- Date Formatting ---
-        const todayString = getTodayDateString();
-        const formattedDate = new Date().toLocaleDateString('id-ID', {
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Populate class dropdown
+            const classSelect = document.getElementById('student-class');
+            classList.forEach(cls => {
+                const option = document.createElement('option');
+                option.value = cls;
+                option.textContent = cls;
+                classSelect.appendChild(option);
+            });
+
+            // Add event listeners
+            studentTabBtn.addEventListener('click', () => switchTab('student'));
+            teacherTabBtn.addEventListener('click', () => switchTab('teacher'));
+            document.getElementById('student-login-btn').addEventListener('click', handleStudentLogin);
+            document.getElementById('teacher-login-btn').addEventListener('click', handleTeacherLogin);
+            document.getElementById('student-logout-btn').addEventListener('click', handleLogout);
+            document.getElementById('teacher-logout-btn').addEventListener('click', handleLogout);
+            document.getElementById('close-photo-viewer').addEventListener('click', hideModal);
+            photoUpload.addEventListener('change', handlePhotoUpload);
+
+            // Set dates
+            const formattedDate = new Date().toLocaleDateString('id-ID', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+            document.getElementById('current-date').textContent = formattedDate;
+            document.getElementById('report-date').textContent = formattedDate;
         });
-        document.getElementById('current-date').textContent = formattedDate;
-        document.getElementById('report-date').textContent = formattedDate;
+        
+        const switchTab = (tab) => {
+            if (tab === 'student') {
+                studentLoginForm.classList.remove('hidden');
+                teacherLoginForm.classList.add('hidden');
+                studentTabBtn.classList.add('active');
+                teacherTabBtn.classList.remove('active');
+                teacherTabBtn.classList.add('text-gray-500');
+
+            } else {
+                studentLoginForm.classList.add('hidden');
+                teacherLoginForm.classList.remove('hidden');
+                studentTabBtn.classList.remove('active');
+                teacherTabBtn.classList.add('active');
+                teacherTabBtn.classList.remove('text-gray-500');
+            }
+        };
+
+        // --- Event Handlers ---
+        function handlePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    uploadedPhotoData = e.target.result;
+                    photoPreview.src = uploadedPhotoData;
+                    photoPreview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
 
         // --- Authentication ---
-        const handleLogin = () => {
-            const userId = userIdInput.value.trim().toLowerCase();
-            if (!userId) {
-                loginError.textContent = 'User ID tidak boleh kosong.';
+        const handleStudentLogin = () => {
+            const name = document.getElementById('student-name').value.trim();
+            const selectedClass = document.getElementById('student-class').value;
+            const errorDiv = document.getElementById('student-login-error');
+
+            if (!name) {
+                errorDiv.textContent = 'Nama tidak boleh kosong.';
                 return;
             }
-            loginError.textContent = '';
-            
-            const user = localUsers[userId];
-            if (user) {
+            errorDiv.textContent = '';
+            currentUser = { name: name, class: selectedClass, role: 'student' };
+            showStudentDashboard();
+        };
+
+        const handleTeacherLogin = () => {
+            const teacherId = document.getElementById('teacher-id').value.trim().toLowerCase();
+            const password = document.getElementById('teacher-password').value;
+            const errorDiv = document.getElementById('teacher-login-error');
+            const user = teacherUsers[teacherId];
+
+            if (user && user.password === password) {
+                errorDiv.textContent = '';
                 currentUser = user;
-                if (currentUser.role === 'student') {
-                    showStudentDashboard();
-                } else if (currentUser.role === 'teacher') {
-                    showTeacherDashboard();
-                }
+                showTeacherDashboard();
             } else {
-                loginError.textContent = 'User ID tidak ditemukan.';
-                currentUser = null;
+                errorDiv.textContent = 'ID atau Password salah.';
             }
         };
 
         const handleLogout = () => {
-             currentUser = null;
-             loginView.classList.remove('hidden');
-             studentView.classList.add('hidden');
-             teacherView.classList.add('hidden');
-             userIdInput.value = '';
+            currentUser = null;
+            uploadedPhotoData = null;
+            
+            // Hide all dashboards
+            studentView.classList.add('hidden');
+            teacherView.classList.add('hidden');
+            
+            // Show login view
+            loginView.classList.remove('hidden');
+            
+            // Reset forms and state
+            document.getElementById('student-name').value = '';
+            document.getElementById('teacher-id').value = '';
+            document.getElementById('teacher-password').value = '';
+            photoUpload.value = '';
+            photoPreview.classList.add('hidden');
+            photoPreview.src = '';
+            switchTab('student'); // Default to student tab on logout
         };
 
-        // --- Student View Functions ---
+        // --- Student View ---
         const showStudentDashboard = () => {
             loginView.classList.add('hidden');
             studentView.classList.remove('hidden');
-            document.getElementById('student-greeting').textContent = `Selamat datang, ${currentUser.name}!`;
+            document.getElementById('student-greeting').textContent = `Selamat datang, ${currentUser.name} (Kelas: ${currentUser.class})`;
             checkTodayAttendance();
             displayAttendanceHistory();
         };
         
         window.markAttendance = (status) => {
             if (!currentUser) return;
-
+            const todayString = getTodayDateString();
+            if (status === 'Hadir' && !uploadedPhotoData) {
+                showModal('Anda harus mengunggah foto untuk absen Hadir.');
+                return;
+            }
             const newAttendance = {
-                studentId: currentUser.id,
                 studentName: currentUser.name,
                 class: currentUser.class,
                 date: todayString,
                 status: status,
-                timestamp: new Date()
+                photo: status === 'Hadir' ? uploadedPhotoData : null
             };
-
+            attendanceData = attendanceData.filter(att => !(att.studentName === currentUser.name && att.date === todayString));
             attendanceData.push(newAttendance);
+            saveAttendanceData();
             showModal(`Kehadiran sebagai '${status}' berhasil dicatat!`);
-            checkTodayAttendance(); // Refresh the buttons/status display
-            displayAttendanceHistory(); // Refresh the history table
+            checkTodayAttendance();
+            displayAttendanceHistory();
         };
         
         const checkTodayAttendance = () => {
-            const todayAttendance = attendanceData.find(att => att.studentId === currentUser.id && att.date === todayString);
-
+            const todayString = getTodayDateString();
+            const todayAttendance = attendanceData.find(att => att.studentName === currentUser.name && att.date === todayString);
             const optionsDiv = document.getElementById('attendance-options');
             const statusDiv = document.getElementById('attendance-status');
-            const statusText = statusDiv.querySelector('p');
-
             if (todayAttendance) {
                 optionsDiv.classList.add('hidden');
+                document.getElementById('photo-section').classList.add('hidden');
                 statusDiv.classList.remove('hidden');
-                statusText.textContent = `Anda sudah absen hari ini: ${todayAttendance.status}`;
+                statusDiv.querySelector('p').textContent = `Anda sudah absen hari ini: ${todayAttendance.status}`;
                 statusDiv.className = `text-center p-4 rounded-lg status-${todayAttendance.status.toLowerCase()}`;
             } else {
                 optionsDiv.classList.remove('hidden');
+                document.getElementById('photo-section').classList.remove('hidden');
                 statusDiv.classList.add('hidden');
             }
         };
 
         const displayAttendanceHistory = () => {
-            const historyTableBody = document.getElementById('history-table-body');
+            const historyBody = document.getElementById('history-table-body');
             const userHistory = attendanceData
-                .filter(att => att.studentId === currentUser.id)
+                .filter(att => att.studentName === currentUser.name)
                 .sort((a, b) => new Date(b.date) - new Date(a.date));
-
             if (userHistory.length === 0) {
-                historyTableBody.innerHTML = `<tr><td colspan="2" class="text-center p-4 text-gray-500">Belum ada riwayat absensi.</td></tr>`;
-                return;
+                historyBody.innerHTML = `<tr><td colspan="2" class="text-center p-4 text-gray-500">Belum ada riwayat.</td></tr>`;
+            } else {
+                historyBody.innerHTML = userHistory.map(att => `
+                    <tr class="border-b">
+                        <td class="p-3">${new Date(att.date + 'T00:00:00').toLocaleDateString('id-ID')}</td>
+                        <td class="p-3"><span class="px-2 py-1 text-xs font-medium rounded-full status-${att.status.toLowerCase()}">${att.status}</span></td>
+                    </tr>`).join('');
             }
-
-            historyTableBody.innerHTML = userHistory.map(att => `
-                <tr class="border-b">
-                    <td class="p-3">${new Date(att.date).toLocaleDateString('id-ID', {year: 'numeric', month: 'long', day: 'numeric'})}</td>
-                    <td class="p-3">
-                        <span class="px-2 py-1 text-xs font-medium rounded-full status-${att.status.toLowerCase()}">
-                            ${att.status}
-                        </span>
-                    </td>
-                </tr>
-            `).join('');
         };
-
-        // --- Teacher View Functions ---
+        
+        // --- Teacher View ---
         const showTeacherDashboard = () => {
             loginView.classList.add('hidden');
             teacherView.classList.remove('hidden');
@@ -392,50 +453,23 @@
         };
 
         const displayClassReport = () => {
-            const reportTableBody = document.getElementById('report-table-body');
-            
-            const studentList = Object.values(localUsers).filter(user => user.role === 'student' && user.class === currentUser.class);
-            const todayAttendance = attendanceData.filter(att => att.class === currentUser.class && att.date === todayString);
-
-            let summary = { Hadir: 0, Sakit: 0, Izin: 0, Alfa: 0 };
-            
-            const reportHtml = studentList.map(student => {
-                const attended = todayAttendance.find(att => att.studentId === student.id);
-                const status = attended ? attended.status : 'Alfa';
-                summary[status]++;
-                
-                return `
+            const reportBody = document.getElementById('report-table-body');
+            const todayString = getTodayDateString();
+            const classAttendance = attendanceData.filter(att => att.class === currentUser.class && att.date === todayString);
+            if (classAttendance.length === 0) {
+                reportBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">Belum ada siswa yang absen hari ini.</td></tr>`;
+            } else {
+                reportBody.innerHTML = classAttendance.map(att => `
                     <tr class="border-b">
-                        <td class="p-3">${student.name}</td>
+                        <td class="p-3">${att.studentName}</td>
+                        <td class="p-3">${att.class}</td>
+                        <td class="p-3"><span class="px-2 py-1 text-xs font-medium rounded-full status-${att.status.toLowerCase()}">${att.status}</span></td>
                         <td class="p-3">
-                            <span class="px-2 py-1 text-xs font-medium rounded-full status-${status.toLowerCase()}">
-                                ${status}
-                            </span>
+                            ${att.photo ? `<img src="${att.photo}" alt="Bukti" class="photo-thumbnail" onclick="showPhotoModal(this.src)">` : '<span>-</span>'}
                         </td>
-                    </tr>
-                `;
-            }).join('');
-
-            reportTableBody.innerHTML = reportHtml || `<tr><td colspan="2" class="text-center p-4">Tidak ada siswa di kelas ini.</td></tr>`;
-
-            // Update summary
-            document.getElementById('summary-hadir').textContent = summary.Hadir;
-            document.getElementById('summary-sakit').textContent = summary.Sakit;
-            document.getElementById('summary-izin').textContent = summary.Izin;
-            document.getElementById('summary-alfa').textContent = summary.Alfa;
+                    </tr>`).join('');
+            }
         };
-        
-        // --- Event Listeners ---
-        loginBtn.addEventListener('click', handleLogin);
-        userIdInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') handleLogin();
-        });
-        
-        document.getElementById('student-logout-btn').addEventListener('click', handleLogout);
-        document.getElementById('teacher-logout-btn').addEventListener('click', handleLogout);
-
     </script>
-
 </body>
 </html>
-
