@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Absensi Online</title>
+    <title>Sistem Absensi Online - Supabase</title>
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Inter -->
@@ -36,9 +38,16 @@
             cursor: pointer;
             transition: all 0.2s ease;
             text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn:disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
         }
         .btn-primary { background-color: #3b82f6; color: white; }
-        .btn-primary:hover { background-color: #2563eb; }
+        .btn-primary:hover:not(:disabled) { background-color: #2563eb; }
         .btn-secondary { background-color: #6b7280; color: white; }
         .btn-secondary:hover { background-color: #4b5563; }
         .status-hadir { background-color: #dcfce7; color: #166534; }
@@ -51,7 +60,6 @@
             border-radius: 8px;
             cursor: pointer;
         }
-        /* Custom Modal for alerts and photo view */
         #custom-modal {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background-color: rgba(0, 0, 0, 0.6);
@@ -70,12 +78,25 @@
             color: #3b82f6;
             border-bottom: 2px solid #3b82f6;
         }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="antialiased text-gray-800">
 
     <div id="app-container" class="app-container">
-
+        
         <!-- ===== Unified Login Section ===== -->
         <div id="login-view" class="card max-w-lg mx-auto">
             <!-- Tabs -->
@@ -121,7 +142,7 @@
 
         <!-- ===== Student Dashboard ===== -->
         <div id="student-view" class="hidden">
-            <div class="card mb-6 flex justify-between items-center flex-wrap gap-4">
+             <div class="card mb-6 flex justify-between items-center flex-wrap gap-4">
                 <div>
                     <h2 class="text-2xl font-bold">Dasbor Siswa</h2>
                     <p id="student-greeting" class="text-gray-600"></p>
@@ -158,7 +179,9 @@
                                     <th class="p-3">Status</th>
                                 </tr>
                             </thead>
-                            <tbody id="history-table-body"></tbody>
+                            <tbody id="history-table-body">
+                                <tr><td colspan="2" class="text-center p-4">Memuat riwayat...</td></tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -187,7 +210,9 @@
                                 <th class="p-3">Bukti Foto</th>
                             </tr>
                         </thead>
-                        <tbody id="report-table-body"></tbody>
+                        <tbody id="report-table-body">
+                            <tr><td colspan="4" class="text-center p-4">Memuat laporan...</td></tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -205,22 +230,38 @@
         </div>
     </div>
 
-    <script>
-        // --- Local "Database" & Config ---
-        // Anda bisa mengubah password guru di sini
-        const teacherUsers = {
-            'wali45': { id: 'wali45', name: 'Dr. Indah Permata', role: 'teacher', class: 'XII-A', password: 'admin123' },
-            'wali46': { id: 'wali46', name: 'Bpk. Budiarto', role: 'teacher', class: 'XII-B', password: 'guru456' },
-        };
+    <script type="module">
+        // --- Supabase Config ---
+        // !!! PENTING: Ganti dengan URL dan Kunci Anon Proyek Supabase Anda !!!
+        const SUPABASE_URL = 'https://jjzkwvprbmgryxyyvpcz.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqemt3dnByYm1ncnl4eXl2cGN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjExNDMsImV4cCI6MjA3NTk5NzE0M30.yCiBeF2ASayF0NdPEvi3P3uzSx5ttgczPJuV7X7cBsk';
+
+        let supabaseClient;
+
+        // Fix: Check for placeholder values before attempting to initialize Supabase.
+        // This prevents the "Invalid supabaseUrl" error in the console.
+        if (SUPABASE_URL === 'URL_PROYEK_SUPABASE_ANDA' || SUPABASE_ANON_KEY === 'KUNCI_ANON_SUPABASE_ANDA') {
+            console.warn("Supabase belum dikonfigurasi. Silakan ganti placeholder URL dan Kunci Anon di dalam kode.");
+            supabaseClient = null;
+        } else {
+            try {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            } catch (error) {
+                console.error("Gagal menginisialisasi Supabase:", error.message);
+                supabaseClient = null;
+            }
+        }
+
+        // --- App Config ---
+        const BUCKET_NAME = 'bukti_foto';
         const classList = [
             'XII-A', 'XII-B', 'XII-C', 'XII-D', 'XII-E', 'XII-F', 
             'XII-G', 'XII-H', 'XII-I', 'XII-J', 'XII-K', 'XII-L'
         ];
-        let attendanceData = JSON.parse(localStorage.getItem('attendanceData')) || [];
-
+        
         // --- Global State ---
         let currentUser = null;
-        let uploadedPhotoData = null;
+        let uploadedPhotoFile = null;
 
         // --- UI Elements ---
         const loginView = document.getElementById('login-view');
@@ -232,27 +273,25 @@
         const teacherTabBtn = document.getElementById('show-teacher-login-tab');
         const photoUpload = document.getElementById('photo-upload');
         const photoPreview = document.getElementById('photo-preview');
-
-        // --- Modal ---
         const customModal = document.getElementById('custom-modal');
         const modalMessage = document.getElementById('modal-message');
         const photoViewer = document.getElementById('photo-viewer');
         const photoViewerImg = document.getElementById('photo-viewer-img');
+        const attendanceOptionsDiv = document.getElementById('attendance-options');
+
 
         // --- Utility Functions ---
         const getTodayDateString = () => new Date().toISOString().split('T')[0];
         
-        const saveAttendanceData = () => {
-            localStorage.setItem('attendanceData', JSON.stringify(attendanceData));
-        };
-
-        const showModal = (message) => {
+        const showModal = (message, duration = 2500) => {
             photoViewer.classList.add('hidden');
             modalMessage.classList.remove('hidden');
             modalMessage.textContent = message;
             customModal.classList.remove('hidden');
             setTimeout(() => customModal.classList.add('visible'), 10);
-            setTimeout(hideModal, 2500);
+            if(duration) {
+                 setTimeout(hideModal, duration);
+            }
         };
         
         const hideModal = () => {
@@ -268,9 +307,25 @@
             setTimeout(() => customModal.classList.add('visible'), 10);
         };
 
+        const toggleButtonLoading = (button, isLoading) => {
+            if (isLoading) {
+                button.disabled = true;
+                button.innerHTML += '<div class="loader"></div>';
+            } else {
+                button.disabled = false;
+                button.querySelector('.loader')?.remove();
+            }
+        };
+
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Populate class dropdown
+            if (!supabaseClient) {
+                showModal('Konfigurasi Supabase tidak valid. Silakan periksa URL dan Kunci API pada kode.', null);
+                document.getElementById('student-login-btn').disabled = true;
+                document.getElementById('teacher-login-btn').disabled = true;
+                return;
+            }
+
             const classSelect = document.getElementById('student-class');
             classList.forEach(cls => {
                 const option = document.createElement('option');
@@ -279,7 +334,6 @@
                 classSelect.appendChild(option);
             });
 
-            // Add event listeners
             studentTabBtn.addEventListener('click', () => switchTab('student'));
             teacherTabBtn.addEventListener('click', () => switchTab('teacher'));
             document.getElementById('student-login-btn').addEventListener('click', handleStudentLogin);
@@ -289,7 +343,6 @@
             document.getElementById('close-photo-viewer').addEventListener('click', hideModal);
             photoUpload.addEventListener('change', handlePhotoUpload);
 
-            // Set dates
             const formattedDate = new Date().toLocaleDateString('id-ID', {
                 weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
             });
@@ -304,7 +357,6 @@
                 studentTabBtn.classList.add('active');
                 teacherTabBtn.classList.remove('active');
                 teacherTabBtn.classList.add('text-gray-500');
-
             } else {
                 studentLoginForm.classList.add('hidden');
                 teacherLoginForm.classList.remove('hidden');
@@ -318,17 +370,17 @@
         function handlePhotoUpload(event) {
             const file = event.target.files[0];
             if (file) {
+                uploadedPhotoFile = file;
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    uploadedPhotoData = e.target.result;
-                    photoPreview.src = uploadedPhotoData;
+                    photoPreview.src = e.target.result;
                     photoPreview.classList.remove('hidden');
                 };
                 reader.readAsDataURL(file);
             }
         }
 
-        // --- Authentication ---
+        // --- Authentication & View Switching ---
         const handleStudentLogin = () => {
             const name = document.getElementById('student-name').value.trim();
             const selectedClass = document.getElementById('student-class').value;
@@ -343,15 +395,26 @@
             showStudentDashboard();
         };
 
-        const handleTeacherLogin = () => {
+        const handleTeacherLogin = async () => {
             const teacherId = document.getElementById('teacher-id').value.trim().toLowerCase();
             const password = document.getElementById('teacher-password').value;
             const errorDiv = document.getElementById('teacher-login-error');
-            const user = teacherUsers[teacherId];
+            const button = document.getElementById('teacher-login-btn');
+            
+            toggleButtonLoading(button, true);
 
-            if (user && user.password === password) {
+            const { data, error } = await supabaseClient
+                .from('teachers')
+                .select('*')
+                .eq('id', teacherId)
+                .eq('password', password) // Peringatan: Jangan gunakan password plaintext di produksi!
+                .single();
+
+            toggleButtonLoading(button, false);
+
+            if (data) {
                 errorDiv.textContent = '';
-                currentUser = user;
+                currentUser = data; // Supabase returns a full object
                 showTeacherDashboard();
             } else {
                 errorDiv.textContent = 'ID atau Password salah.';
@@ -360,26 +423,22 @@
 
         const handleLogout = () => {
             currentUser = null;
-            uploadedPhotoData = null;
-            
-            // Hide all dashboards
+            uploadedPhotoFile = null;
             studentView.classList.add('hidden');
             teacherView.classList.add('hidden');
-            
-            // Show login view
             loginView.classList.remove('hidden');
             
-            // Reset forms and state
+            // Reset forms
             document.getElementById('student-name').value = '';
             document.getElementById('teacher-id').value = '';
             document.getElementById('teacher-password').value = '';
             photoUpload.value = '';
             photoPreview.classList.add('hidden');
             photoPreview.src = '';
-            switchTab('student'); // Default to student tab on logout
+            switchTab('student');
         };
 
-        // --- Student View ---
+        // --- Student Dashboard Logic ---
         const showStudentDashboard = () => {
             loginView.classList.add('hidden');
             studentView.classList.remove('hidden');
@@ -388,55 +447,96 @@
             displayAttendanceHistory();
         };
         
-        window.markAttendance = (status) => {
+        window.markAttendance = async (status) => {
             if (!currentUser) return;
-            const todayString = getTodayDateString();
-            if (status === 'Hadir' && !uploadedPhotoData) {
+            
+            if (status === 'Hadir' && !uploadedPhotoFile) {
                 showModal('Anda harus mengunggah foto untuk absen Hadir.');
                 return;
             }
-            const newAttendance = {
-                studentName: currentUser.name,
-                class: currentUser.class,
-                date: todayString,
-                status: status,
-                photo: status === 'Hadir' ? uploadedPhotoData : null
-            };
-            attendanceData = attendanceData.filter(att => !(att.studentName === currentUser.name && att.date === todayString));
-            attendanceData.push(newAttendance);
-            saveAttendanceData();
-            showModal(`Kehadiran sebagai '${status}' berhasil dicatat!`);
-            checkTodayAttendance();
-            displayAttendanceHistory();
+
+            Array.from(attendanceOptionsDiv.querySelectorAll('button')).forEach(b => toggleButtonLoading(b, true));
+            let photoUrl = null;
+
+            // 1. Upload photo if present
+            if (status === 'Hadir' && uploadedPhotoFile) {
+                const fileName = `${currentUser.name.replace(/\s+/g, '_')}_${Date.now()}`;
+                const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                    .from(BUCKET_NAME)
+                    .upload(fileName, uploadedPhotoFile);
+
+                if (uploadError) {
+                    showModal(`Gagal mengunggah foto: ${uploadError.message}`);
+                    Array.from(attendanceOptionsDiv.querySelectorAll('button')).forEach(b => toggleButtonLoading(b, false));
+                    return;
+                }
+                
+                const { data: urlData } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(fileName);
+                photoUrl = urlData.publicUrl;
+            }
+
+            // 2. Insert attendance record
+            const todayString = getTodayDateString();
+            const { error: insertError } = await supabaseClient
+                .from('attendance')
+                .insert([{
+                    student_name: currentUser.name,
+                    class: currentUser.class,
+                    date: todayString,
+                    status: status,
+                    photo_url: photoUrl
+                }]);
+            
+            Array.from(attendanceOptionsDiv.querySelectorAll('button')).forEach(b => toggleButtonLoading(b, false));
+
+            if (insertError) {
+                showModal(`Gagal menyimpan absensi: ${insertError.message}`);
+            } else {
+                showModal(`Kehadiran sebagai '${status}' berhasil dicatat!`);
+                checkTodayAttendance();
+                displayAttendanceHistory();
+            }
         };
         
-        const checkTodayAttendance = () => {
+        const checkTodayAttendance = async () => {
             const todayString = getTodayDateString();
-            const todayAttendance = attendanceData.find(att => att.studentName === currentUser.name && att.date === todayString);
-            const optionsDiv = document.getElementById('attendance-options');
+            const { data, error } = await supabaseClient
+                .from('attendance')
+                .select('status')
+                .eq('student_name', currentUser.name)
+                .eq('date', todayString)
+                .single();
+
             const statusDiv = document.getElementById('attendance-status');
-            if (todayAttendance) {
-                optionsDiv.classList.add('hidden');
+            if (data) {
+                attendanceOptionsDiv.classList.add('hidden');
                 document.getElementById('photo-section').classList.add('hidden');
                 statusDiv.classList.remove('hidden');
-                statusDiv.querySelector('p').textContent = `Anda sudah absen hari ini: ${todayAttendance.status}`;
-                statusDiv.className = `text-center p-4 rounded-lg status-${todayAttendance.status.toLowerCase()}`;
+                statusDiv.querySelector('p').textContent = `Anda sudah absen hari ini: ${data.status}`;
+                statusDiv.className = `text-center p-4 rounded-lg status-${data.status.toLowerCase()}`;
             } else {
-                optionsDiv.classList.remove('hidden');
+                attendanceOptionsDiv.classList.remove('hidden');
                 document.getElementById('photo-section').classList.remove('hidden');
                 statusDiv.classList.add('hidden');
             }
         };
 
-        const displayAttendanceHistory = () => {
+        const displayAttendanceHistory = async () => {
             const historyBody = document.getElementById('history-table-body');
-            const userHistory = attendanceData
-                .filter(att => att.studentName === currentUser.name)
-                .sort((a, b) => new Date(b.date) - new Date(a.date));
-            if (userHistory.length === 0) {
+            const { data, error } = await supabaseClient
+                .from('attendance')
+                .select('*')
+                .eq('student_name', currentUser.name)
+                .order('date', { ascending: false });
+
+            if (error) {
+                historyBody.innerHTML = `<tr><td colspan="2" class="text-center p-4 text-red-500">Gagal memuat riwayat.</td></tr>`;
+                return;
+            }
+            if (data.length === 0) {
                 historyBody.innerHTML = `<tr><td colspan="2" class="text-center p-4 text-gray-500">Belum ada riwayat.</td></tr>`;
             } else {
-                historyBody.innerHTML = userHistory.map(att => `
+                historyBody.innerHTML = data.map(att => `
                     <tr class="border-b">
                         <td class="p-3">${new Date(att.date + 'T00:00:00').toLocaleDateString('id-ID')}</td>
                         <td class="p-3"><span class="px-2 py-1 text-xs font-medium rounded-full status-${att.status.toLowerCase()}">${att.status}</span></td>
@@ -444,7 +544,7 @@
             }
         };
         
-        // --- Teacher View ---
+        // --- Teacher Dashboard Logic ---
         const showTeacherDashboard = () => {
             loginView.classList.add('hidden');
             teacherView.classList.remove('hidden');
@@ -452,20 +552,29 @@
             displayClassReport();
         };
 
-        const displayClassReport = () => {
+        const displayClassReport = async () => {
             const reportBody = document.getElementById('report-table-body');
             const todayString = getTodayDateString();
-            const classAttendance = attendanceData.filter(att => att.class === currentUser.class && att.date === todayString);
-            if (classAttendance.length === 0) {
+            const { data, error } = await supabaseClient
+                .from('attendance')
+                .select('*')
+                .eq('class', currentUser.class)
+                .eq('date', todayString);
+
+            if (error) {
+                 reportBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-red-500">Gagal memuat laporan.</td></tr>`;
+                 return;
+            }
+            if (data.length === 0) {
                 reportBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">Belum ada siswa yang absen hari ini.</td></tr>`;
             } else {
-                reportBody.innerHTML = classAttendance.map(att => `
+                reportBody.innerHTML = data.map(att => `
                     <tr class="border-b">
-                        <td class="p-3">${att.studentName}</td>
+                        <td class="p-3">${att.student_name}</td>
                         <td class="p-3">${att.class}</td>
                         <td class="p-3"><span class="px-2 py-1 text-xs font-medium rounded-full status-${att.status.toLowerCase()}">${att.status}</span></td>
                         <td class="p-3">
-                            ${att.photo ? `<img src="${att.photo}" alt="Bukti" class="photo-thumbnail" onclick="showPhotoModal(this.src)">` : '<span>-</span>'}
+                            ${att.photo_url ? `<img src="${att.photo_url}" alt="Bukti" class="photo-thumbnail" onclick="showPhotoModal(this.src)">` : '<span>-</span>'}
                         </td>
                     </tr>`).join('');
             }
@@ -473,3 +582,4 @@
     </script>
 </body>
 </html>
+
