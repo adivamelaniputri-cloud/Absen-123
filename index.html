@@ -113,7 +113,11 @@
             <div id="student-login-form">
                 <div class="mb-4">
                     <label for="student-name" class="block text-sm font-medium text-gray-600 mb-1">Nama Lengkap</label>
-                    <input type="text" id="student-name" placeholder="Masukkan nama lengkap Anda" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <!-- Perubahan: Dari input teks menjadi dropdown untuk daftar nama -->
+                    <select id="student-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="" disabled selected>Pilih Nama Anda</option>
+                        <!-- Student names will be populated here by JS -->
+                    </select>
                 </div>
                 <div class="mb-4">
                     <label for="student-class" class="block text-sm font-medium text-gray-600 mb-1">Pilih Kelas</label>
@@ -231,6 +235,25 @@
     </div>
 
     <script type="module">
+        // --- Data Siswa dan Kelas ---
+        const studentNames = [
+            'ADIFA MELANI PUTRI', 'ANASTASYA ZAJULI', 'ANDINI PUTRI PRASETYO', 'ANNISA SETIAWAN',
+            'AURA ZAHRANI', 'AURELLIA RAHMAN', 'CANTIKA PUJIARTI', 'DARRIELL RIYADI',
+            'FAZLE MAWLA AKHTAR SOPIAN', 'FITRIYANI SARI', 'GALANG RIZKY SADAYA', 'INDIRA ARPIANA',
+            'IRFAN HAFIZH RIZQULLAH', 'KALILA AZHARA', 'KANIYA JULIA UTAMI', 'KAUTSAR HIDAYATULLAH',
+            'MIKA AL GHANI JASIN', 'MUHAMAD FARID RAMADHAN', 'MUHAMAD LANGGI YURI PRADIPTA', 'MUHAMMAD ADDAR QUTHNI',
+            'MUHAMMAD AWA ABDURROHMAN', 'NADIRA INDRIANI', 'NIA PUTRI RAMADHANI', 'PUTRI ALYSA KEYLA',
+            'RADITYA GUNAWAN', 'RAID DHAYLA JABAR', 'RAFI AHMAD AL GIBRAN', 'RAINA MAIRA HERMAWAN',
+            'RAISYA ARIYANTI', 'RAZIP ADI PRATAMA', 'RINDU SALSABILA', 'RUBIANA AZZAHRA',
+            'SHINTA RAHAYU PERTIWI SUJAI', 'SITI ALIFTA AZZAHRA KHUMAIROH', 'SULTHAN RIFQI GHIBRANSYAH',
+            'TIARA DWI RAMADHANI'
+        ];
+
+        const classList = [
+            'XII-A', 'XII-B', 'XII-C', 'XII-D', 'XII-E', 'XII-F', 
+            'XII-G', 'XII-H', 'XII-I', 'XII-J', 'XII-K', 'XII-L'
+        ];
+        
         // --- Supabase Config ---
         // !!! PENTING: Ganti dengan URL dan Kunci Anon Proyek Supabase Anda !!!
         const SUPABASE_URL = 'https://jjzkwvprbmgryxyyvpcz.supabase.co';
@@ -238,8 +261,7 @@
 
         let supabaseClient;
 
-        // Fix: Check for placeholder values before attempting to initialize Supabase.
-        // This prevents the "Invalid supabaseUrl" error in the console.
+        // Cek dan Inisialisasi Supabase
         if (SUPABASE_URL === 'URL_PROYEK_SUPABASE_ANDA' || SUPABASE_ANON_KEY === 'KUNCI_ANON_SUPABASE_ANDA') {
             console.warn("Supabase belum dikonfigurasi. Silakan ganti placeholder URL dan Kunci Anon di dalam kode.");
             supabaseClient = null;
@@ -254,10 +276,6 @@
 
         // --- App Config ---
         const BUCKET_NAME = 'bukti_foto';
-        const classList = [
-            'XII-A', 'XII-B', 'XII-C', 'XII-D', 'XII-E', 'XII-F', 
-            'XII-G', 'XII-H', 'XII-I', 'XII-J', 'XII-K', 'XII-L'
-        ];
         
         // --- Global State ---
         let currentUser = null;
@@ -326,6 +344,16 @@
                 return;
             }
 
+            // Memuat daftar NAMA SISWA ke dropdown
+            const nameSelect = document.getElementById('student-name');
+            studentNames.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                nameSelect.appendChild(option);
+            });
+
+            // Memuat daftar KELAS ke dropdown
             const classSelect = document.getElementById('student-class');
             classList.forEach(cls => {
                 const option = document.createElement('option');
@@ -382,12 +410,12 @@
 
         // --- Authentication & View Switching ---
         const handleStudentLogin = () => {
-            const name = document.getElementById('student-name').value.trim();
+            const name = document.getElementById('student-name').value; // Mengambil value dari select
             const selectedClass = document.getElementById('student-class').value;
             const errorDiv = document.getElementById('student-login-error');
 
             if (!name) {
-                errorDiv.textContent = 'Nama tidak boleh kosong.';
+                errorDiv.textContent = 'Anda harus memilih nama.';
                 return;
             }
             errorDiv.textContent = '';
@@ -430,6 +458,7 @@
             
             // Reset forms
             document.getElementById('student-name').value = '';
+            document.getElementById('student-class').value = classList[0]; // Setel kembali ke kelas pertama
             document.getElementById('teacher-id').value = '';
             document.getElementById('teacher-password').value = '';
             photoUpload.value = '';
@@ -454,8 +483,10 @@
                 showModal('Anda harus mengunggah foto untuk absen Hadir.');
                 return;
             }
-
-            Array.from(attendanceOptionsDiv.querySelectorAll('button')).forEach(b => toggleButtonLoading(b, true));
+            
+            const buttons = Array.from(attendanceOptionsDiv.querySelectorAll('button'));
+            buttons.forEach(b => toggleButtonLoading(b, true));
+            
             let photoUrl = null;
 
             // 1. Upload photo if present
@@ -466,8 +497,8 @@
                     .upload(fileName, uploadedPhotoFile);
 
                 if (uploadError) {
-                    showModal(`Gagal mengunggah foto: ${uploadError.message}`);
-                    Array.from(attendanceOptionsDiv.querySelectorAll('button')).forEach(b => toggleButtonLoading(b, false));
+                    showModal(`Gagal mengunggah foto: ${uploadError.message}. Pastikan bucket 'bukti_foto' sudah diatur.`);
+                    buttons.forEach(b => toggleButtonLoading(b, false));
                     return;
                 }
                 
@@ -487,10 +518,10 @@
                     photo_url: photoUrl
                 }]);
             
-            Array.from(attendanceOptionsDiv.querySelectorAll('button')).forEach(b => toggleButtonLoading(b, false));
+            buttons.forEach(b => toggleButtonLoading(b, false));
 
             if (insertError) {
-                showModal(`Gagal menyimpan absensi: ${insertError.message}`);
+                showModal(`Gagal menyimpan absensi: ${insertError.message}. Pastikan RLS dan Policies sudah diatur.`);
             } else {
                 showModal(`Kehadiran sebagai '${status}' berhasil dicatat!`);
                 checkTodayAttendance();
@@ -582,4 +613,3 @@
     </script>
 </body>
 </html>
-
